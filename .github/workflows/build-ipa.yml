@@ -1,0 +1,47 @@
+name: Build unsigned IPA
+
+# Builds the Dscribe iOS app with NO code signing and packages an unsigned .ipa.
+# SideStore (or AltStore/Sideloadly) re-signs it on your own computer with your Apple ID.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build app (unsigned)
+        run: |
+          xcodebuild \
+            -project Dscribe.xcodeproj \
+            -scheme Dscribe \
+            -configuration Release \
+            -derivedDataPath build \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          APP_PATH="build/Build/Products/Release-iphoneos/Dscribe.app"
+          test -d "$APP_PATH" || { echo "Dscribe.app not found"; exit 1; }
+          rm -rf Payload Dscribe-unsigned.ipa
+          mkdir Payload
+          cp -R "$APP_PATH" Payload/
+          zip -r -y Dscribe-unsigned.ipa Payload
+          unzip -l Dscribe-unsigned.ipa | head -20
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dscribe-unsigned-ipa
+          path: Dscribe-unsigned.ipa
+          if-no-files-found: error
