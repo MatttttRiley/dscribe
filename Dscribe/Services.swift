@@ -470,7 +470,7 @@ final class TranscriptionService: ObservableObject {
         if !preferApple, let pipe {
             do {
                 let duration = audioDuration(of: url)
-                let results: [TranscriptionSegment]
+                let results: [TranscriptionResult]
                 if duration > 300 {
                     // Long recordings: bounded-memory incremental loading.
                     let options = AudioInputOptions(audioLoadingMode: .incremental)
@@ -478,7 +478,7 @@ final class TranscriptionService: ObservableObject {
                 } else {
                     results = try await pipe.transcribe(audioPath: url.path)
                 }
-                var segments = results.map {
+                var segments = results.flatMap { $0.segments }.map {
                     TranscriptSegment(text: $0.text, start: Double($0.start), end: Double($0.end))
                 }
                 segments = SpeakerTurns.assignSpeakers(to: segments)
